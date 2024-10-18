@@ -1,5 +1,6 @@
-using MongoDB.Driver;
 using ToDoList.Models;
+using MongoDB.Driver;
+using DotNetEnv;
 
 namespace ToDoList.Data
 {
@@ -9,7 +10,8 @@ namespace ToDoList.Data
 
         public TodoDbContext(IConfiguration config)
         {
-            var client = new MongoClient(config.GetConnectionString("MongoDb"));
+            Env.Load();
+            var client = new MongoClient(Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING"));
             _database = client.GetDatabase("ToDoListDb");
         }
 

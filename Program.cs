@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using ToDoList.Data;
+using ToDoList.Authorization;
 using ToDoList.Repositories;
 using ToDoList.Services;
-using ToDoList.Authorization;
-using Microsoft.IdentityModel.Tokens;
+using ToDoList.Data;
 using System.Text;
+using Amazon.S3;
 using DotNetEnv;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,7 +16,6 @@ Env.Load();
 var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY");
 var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER");
 var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE");
-
 
 if (string.IsNullOrEmpty(jwtKey))
 {
@@ -107,6 +107,8 @@ builder.Services.AddScoped<TodoRepository>();
 builder.Services.AddScoped<TodoService>();
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<S3Service>();
+builder.Services.AddAWSService<IAmazonS3>();
 
 var app = builder.Build();
 

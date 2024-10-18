@@ -1,5 +1,5 @@
-using ToDoList.Models;
 using ToDoList.Repositories;
+using ToDoList.Models;
 using System.Text;
 
 namespace ToDoList.Services
@@ -24,6 +24,16 @@ namespace ToDoList.Services
             user.Role = role;
             await _userRepository.AddUserAsync(user);
             return true;
+        }
+
+        public async Task UpdateUserAsync(User user)
+        {
+            await _userRepository.UpdateUserAsync(user);
+        }
+
+        public async Task<User?> GetUserByIdAsync(string id)
+        {
+            return await _userRepository.GetByIdAsync(id);
         }
 
         public async Task<User?> AuthenticateAsync(string username, string password)

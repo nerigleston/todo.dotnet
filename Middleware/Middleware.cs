@@ -11,28 +11,31 @@ public class AuthorizationMiddleware
     {
         await _next(context);
 
-        if (context.Response.StatusCode == StatusCodes.Status403Forbidden)
+        if (!context.Response.HasStarted)
         {
-            context.Response.ContentType = "application/json";
-            var response = new
+            if (context.Response.StatusCode == StatusCodes.Status403Forbidden)
             {
-                statusCode = StatusCodes.Status403Forbidden,
-                message = "You are not authorized to access this resource"
-            };
+                context.Response.ContentType = "application/json";
+                var response = new
+                {
+                    statusCode = StatusCodes.Status403Forbidden,
+                    message = "You are not authorized to access this resource"
+                };
 
-            await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(response));
-        }
+                await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(response));
+            }
 
-        if (context.Response.StatusCode == StatusCodes.Status401Unauthorized)
-        {
-            context.Response.ContentType = "application/json";
-            var response = new
+            if (context.Response.StatusCode == StatusCodes.Status401Unauthorized)
             {
-                statusCode = StatusCodes.Status401Unauthorized,
-                message = "You are not authenticated"
-            };
+                context.Response.ContentType = "application/json";
+                var response = new
+                {
+                    statusCode = StatusCodes.Status401Unauthorized,
+                    message = "You are not authenticated"
+                };
 
-            await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(response));
+                await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(response));
+            }
         }
     }
 }

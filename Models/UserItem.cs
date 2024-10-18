@@ -1,5 +1,5 @@
-using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Bson;
 
 namespace ToDoList.Models
 {
@@ -14,6 +14,8 @@ namespace ToDoList.Models
         public string PasswordHash { get; set; } = string.Empty;
 
         public string Role { get; set; } = string.Empty;
+
+        public string PictureUrl { get; set; } = string.Empty;
     }
 
     public class LoginRequest

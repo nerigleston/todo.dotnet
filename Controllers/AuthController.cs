@@ -1,11 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
-using System.IdentityModel.Tokens.Jwt;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using ToDoList.Services;
 using ToDoList.Models;
-using System.Text;
+using ToDoList.Utils;
 using DotNetEnv;
 
 namespace ToDoList.Controllers
@@ -14,20 +12,29 @@ namespace ToDoList.Controllers
     public class AuthController : ControllerBase
     {
         private readonly AuthService _authService;
+        private readonly S3Service _s3Service;
         private readonly IConfiguration _config;
 
-        public AuthController(AuthService authService, IConfiguration config)
+        public AuthController(AuthService authService, IConfiguration config, S3Service s3Service)
         {
             _authService = authService;
             _config = config;
+            _s3Service = s3Service;
             Env.Load();
         }
 
         [HttpPost("create")]
-        [Authorize(Policy = "CanCreateUser")]
-        public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
+        [AllowAnonymous]
+        public async Task<IActionResult> CreateUser([FromForm] CreateUserRequest request, IFormFile? picture)
         {
             var newUser = new User { Username = request.Username };
+
+            if (picture != null && picture.Length > 0)
+            {
+                var fileName = $"{Guid.NewGuid()}_{picture.FileName}";
+                newUser.PictureUrl = await _s3Service.UploadFileAsync(picture, fileName);
+            }
+
             var result = await _authService.CreateUserAsync(newUser, request.Password, request.Role);
 
             if (!result)
@@ -35,8 +42,29 @@ namespace ToDoList.Controllers
                 return BadRequest(new { Message = "User already exists" });
             }
 
-            return Ok(new { Message = "User created successfully" });
+            return Ok(new { Message = "User created successfully", PictureUrl = newUser.PictureUrl });
         }
+
+        [HttpPatch("{userId}/photo")]
+        [Authorize(Policy = "CanEdit")]
+        public async Task<IActionResult> UpdateUserPhoto(string userId, IFormFile newPhoto)
+        {
+            var user = await _authService.GetUserByIdAsync(userId);
+            if (user == null)
+            {
+                return NotFound("User not found");
+            }
+
+            var photoUrl = await _s3Service.UploadFileAsync(newPhoto, $"{Guid.NewGuid()}_{newPhoto.FileName}");
+
+            Console.WriteLine(photoUrl);
+
+            user.PictureUrl = photoUrl;
+            await _authService.UpdateUserAsync(user);
+
+            return Ok(new { message = "Photo updated successfully", PictureUrl = photoUrl });
+        }
+
 
         [HttpPost("login")]
         [AllowAnonymous]
@@ -46,34 +74,43 @@ namespace ToDoList.Controllers
 
             if (user == null)
             {
-                return Unauthorized(new { Message = "Invalid username or password" });
+                return Unauthorized(
+                new
+                {
+                    statusCode = 401,
+                    message = "Invalid username or password"
+                });
             }
 
-            var token = GenerateJwtToken(user);
+            var token = JwtTokenGenerator.GenerateJwtToken(user);
 
-            return Ok(new { Username = user.Username, Role = user.Role, Token = token });
+            return Ok(new
+            {
+                Id = user.Id,
+                Username = user.Username,
+                Role = user.Role,
+                Token = token
+            });
         }
 
-        private string GenerateJwtToken(User user)
+        [HttpGet("current-user")]
+        [Authorize]
+        public async Task<IActionResult> GetCurrentUser()
         {
-            var key = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_config["Jwt:Key"] ?? throw new InvalidOperationException()));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            var claims = new[]
+            if (userId == null)
             {
-                new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.Role, user.Role)
-            };
+                return Unauthorized(new { Message = "User not authenticated" });
+            }
 
-            var token = new JwtSecurityToken(
-                claims: claims,
-                expires: DateTime.Now.AddHours(2),
-                signingCredentials: creds,
-                audience: Environment.GetEnvironmentVariable("JWT_ISSUER"),
-                issuer: Environment.GetEnvironmentVariable("JWT_ISSUER")
-            );
+            var user = await _authService.GetUserByIdAsync(userId);
+            if (user == null)
+            {
+                return NotFound(new { Message = "User not found" });
+            }
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+            return Ok(new { Username = user.Username, Role = user.Role, PictureUrl = user.PictureUrl });
         }
 
         [HttpPost("request-password-reset")]
