@@ -26,7 +26,10 @@ namespace ToDoList.Repositories
         public async Task UpdateUserAsync(User user)
         {
             var filter = Builders<User>.Filter.Eq(u => u.Id, user.Id);
-            var update = Builders<User>.Update.Set(u => u.PasswordHash, user.PasswordHash);
+
+            var update = Builders<User>.Update
+                .Set(u => u.PasswordHash, user.PasswordHash)
+                .Set(u => u.PictureUrl, user.PictureUrl);
 
             await _context.Users.UpdateOneAsync(filter, update);
         }
