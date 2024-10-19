@@ -232,11 +232,11 @@ namespace ToDoList.Controllers
                             {
                                 new
                                 {
-                                    text = $"Responda sempre dentro do contexto do ToDo",
+                                    text = "Responda sempre dentro do contexto do ToDo",
                                 },
                                 new
                                 {
-                                    text = $"isCompleted = true se a tarefa foi concluída, isCompleted = false se a tarefa não foi concluída"
+                                    text = "isCompleted = true se a tarefa foi concluída, isCompleted = false se a tarefa não foi concluída"
                                 },
                                 new
                                 {
