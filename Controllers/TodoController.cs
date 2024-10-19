@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Net.Http.Headers;
 using System.Security.Claims;
 using Newtonsoft.Json.Linq;
 using ToDoList.Services;
@@ -249,6 +250,10 @@ namespace ToDoList.Controllers
                                 {
                                     text = $"Data e Hora Atual: {DateTime.Now.ToUniversalTime().AddHours(-3).ToString("dd-MM-yyyy HH:mm:ss")}"
                                 },
+                                new
+                                {
+                                    text = "Caso não saiba a resposta, responda que não contém informação suficiente para responder"
+                                }
                             }
                         }
                     }
@@ -286,5 +291,102 @@ namespace ToDoList.Controllers
                 return StatusCode(500, new { Message = "Internal Server Error", Detail = ex.Message });
             }
         }
+
+        // Caso queira usar no modo stream
+        // [HttpGet("ask")]
+        // [ProducesResponseType(StatusCodes.Status200OK)]
+        // [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        // [Authorize(Policy = "CanView")]
+        // public async Task<IActionResult> GetAllAndAsk([FromQuery] string question)
+        // {
+        //     try
+        //     {
+        //         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        //         if (string.IsNullOrEmpty(userId))
+        //         {
+        //             return Unauthorized(new { Message = "User is not authorized." });
+        //         }
+
+        //         var todos = await _todoService.GetTodosByUserIdAsync(userId);
+
+        //         if (todos == null || todos.Count == 0)
+        //         {
+        //             return NotFound(new { Message = "No todos found." });
+        //         }
+
+        //         var todosText = string.Join(", ", todos.Select(t =>
+        //                 $"(Todo: {t.Title} Concluído: {t.IsCompleted}, Criado em: {(t.CreatedAt.ToUniversalTime().AddHours(-3)).ToString("dd-MM-yyyy HH:mm:ss")})"
+        //             )
+        //         );
+
+        //         var requestBody = new
+        //         {
+        //             contents = new[]
+        //             {
+        //                 new
+        //                 {
+        //                     parts = new[]
+        //                     {
+        //                         new { text = $"Responda sempre dentro do contexto do ToDo" },
+        //                         new { text = $"isCompleted = true se a tarefa foi concluída, isCompleted = false se a tarefa não foi concluída" },
+        //                         new { text = $"ToDos: {todosText}" },
+        //                         new { text = $"Pergunta: {question}" },
+        //                         new { text = $"Data e Hora Atual: {DateTime.Now.ToUniversalTime().AddHours(-3).ToString("dd-MM-yyyy HH:mm:ss")}" },
+        //                         new { text = "Caso não saiba a resposta, responda que não contém informação suficiente para responder" }
+        //                     }
+        //                 }
+        //             }
+        //         };
+
+        //         var jsonData = JsonConvert.SerializeObject(requestBody);
+        //         var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
+
+        //         var apiKey = Environment.GetEnvironmentVariable("GOOGLE_GEMINI_API_KEY");
+        //         var apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key={apiKey}";
+
+        //         using (var httpClient = new HttpClient())
+        //         using (var request = new HttpRequestMessage(HttpMethod.Post, apiUrl) { Content = content })
+        //         {
+        //             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+
+        //             var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+
+        //             if (!response.IsSuccessStatusCode)
+        //             {
+        //                 return StatusCode((int)response.StatusCode, new { Message = "Error from external API", Detail = await response.Content.ReadAsStringAsync() });
+        //             }
+
+        //             var stream = await response.Content.ReadAsStreamAsync();
+
+        //             using (var reader = new StreamReader(stream))
+        //             {
+        //                 Response.ContentType = "text/event-stream";
+
+        //                 while (!reader.EndOfStream)
+        //                 {
+        //                     var line = await reader.ReadLineAsync();
+
+        //                     if (!string.IsNullOrEmpty(line))
+        //                     {
+        //                         // SSE messages often start with "data: " prefix, remove it to extract the actual content
+        //                         if (line.StartsWith("data: "))
+        //                         {
+        //                             var data = line.Substring(6);
+        //                             await Response.WriteAsync($"data: {data}\n\n");
+        //                             await Response.Body.FlushAsync();
+        //                         }
+        //                     }
+        //                 }
+        //             }
+        //         }
+
+        //         return new EmptyResult(); // Since we're streaming the response directly.
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         return StatusCode(500, new { Message = "Internal Server Error", Detail = ex.Message });
+        //     }
+        // }
     }
 }
