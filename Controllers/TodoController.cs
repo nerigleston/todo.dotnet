@@ -218,7 +218,7 @@ namespace ToDoList.Controllers
                 }
 
                 var todosText = string.Join(", ", todos.Select(t =>
-                        $"(Todo: {t.Title} Concluído: {t.IsCompleted}, Criado em: {(t.CreatedAt.ToUniversalTime().AddHours(-3)).ToString("dd-MM-yyyy HH:mm:ss")})"
+                        $"Todo: {t.Title} Concluído: {t.IsCompleted}, Criado em: {(t.CreatedAt.ToUniversalTime().AddHours(-3)).ToString("dd-MM-yyyy HH:mm:ss")}"
                     )
                 );
 
@@ -236,7 +236,7 @@ namespace ToDoList.Controllers
                                 },
                                 new
                                 {
-                                    text = "isCompleted = true se a tarefa foi concluída, isCompleted = false se a tarefa não foi concluída"
+                                    text = "isCompleted = true ('Completa') se a tarefa foi concluída, isCompleted = false ('Não Completa') se a tarefa não foi concluída"
                                 },
                                 new
                                 {
