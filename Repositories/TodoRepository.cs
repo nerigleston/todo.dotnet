@@ -13,10 +13,18 @@ namespace ToDoList.Repositories
             _context = context;
         }
 
-        public async Task<List<TodoItem>> GetAllAsync() => await _context.TodoItems.Find(_ => true).ToListAsync();
-        public async Task<TodoItem> GetByIdAsync(string id)
+        public async Task<List<TodoItem>> GetByUserIdAsync(string userId)
         {
-            var filter = Builders<TodoItem>.Filter.Eq(todo => todo.Id, id);
+            var filter = Builders<TodoItem>.Filter.Eq(todo => todo.UserId, userId);
+            return await _context.TodoItems.Find(filter).ToListAsync();
+        }
+
+        public async Task<TodoItem> GetByIdAndUserIdAsync(string id, string userId)
+        {
+            var filter = Builders<TodoItem>.Filter.And(
+                Builders<TodoItem>.Filter.Eq(todo => todo.Id, id),
+                Builders<TodoItem>.Filter.Eq(todo => todo.UserId, userId)
+            );
             return await _context.TodoItems.Find(filter).FirstOrDefaultAsync();
         }
 

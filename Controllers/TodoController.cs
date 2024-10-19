@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using Newtonsoft.Json.Linq;
 using ToDoList.Services;
 using ToDoList.Models;
@@ -32,7 +33,13 @@ namespace ToDoList.Controllers
         {
             try
             {
-                var todos = await _todoService.GetAllAsync();
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (userId == null)
+                {
+                    return Unauthorized(new { Message = "User not authenticated" });
+                }
+
+                var todos = await _todoService.GetTodosByUserIdAsync(userId);
                 return Ok(todos);
             }
             catch (Exception ex)
@@ -54,9 +61,16 @@ namespace ToDoList.Controllers
                 return BadRequest(new { Message = "Invalid ID" });
             }
 
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (userId == null)
+            {
+                return Unauthorized(new { Message = "User not authenticated" });
+            }
+
             try
             {
-                var todo = await _todoService.GetByIdAsync(id);
+                var todo = await _todoService.GetByIdAsync(id, userId);
 
                 if (todo == null)
                 {
@@ -85,6 +99,15 @@ namespace ToDoList.Controllers
 
             try
             {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (userId == null)
+                {
+                    return Unauthorized(new { Message = "User not authenticated" });
+                }
+
+                newTodo.IsCompleted = false;
+                newTodo.UserId = userId;
+
                 await _todoService.CreateAsync(newTodo);
                 return CreatedAtAction(nameof(GetById), new { id = newTodo.Id }, newTodo);
             }
@@ -102,23 +125,19 @@ namespace ToDoList.Controllers
         [Authorize(Policy = "CanDelete")]
         public async Task<IActionResult> Delete(string id)
         {
-            if (string.IsNullOrEmpty(id))
-            {
-                return BadRequest(new { Message = "Invalid ID" });
-            }
-
             try
             {
-                var existingTodo = await _todoService.GetByIdAsync(id);
-
-                if (existingTodo == null)
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (userId == null)
                 {
-                    return NotFound(new { Message = "Todo not found" });
+                    return Unauthorized(new { Message = "User not authenticated" });
                 }
 
-                if (existingTodo.IsCompleted)
+                var existingTodo = await _todoService.GetByIdAsync(id, userId);
+
+                if (existingTodo == null || existingTodo.UserId != userId)
                 {
-                    return BadRequest(new { Message = "Cannot delete a completed todo" });
+                    return NotFound(new { Message = "Todo not found or you're not authorized to delete this todo" });
                 }
 
                 await _todoService.DeleteAsync(id);
@@ -145,11 +164,22 @@ namespace ToDoList.Controllers
 
             try
             {
-                var todo = await _todoService.GetByIdAsync(id);
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(new { Message = "User not authenticated" });
+                }
+
+                var todo = await _todoService.GetByIdAsync(id, userId);
 
                 if (todo == null)
                 {
                     return NotFound(new { Message = "Todo not found" });
+                }
+
+                if (todo.UserId != userId)
+                {
+                    return Unauthorized(new { Message = "You're not authorized to update this todo" });
                 }
 
                 todo.IsCompleted = !todo.IsCompleted;
@@ -172,7 +202,14 @@ namespace ToDoList.Controllers
         {
             try
             {
-                var todos = await _todoService.GetAllAsync();
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(new { Message = "User is not authorized." });
+                }
+
+                var todos = await _todoService.GetTodosByUserIdAsync(userId);
 
                 if (todos == null || todos.Count == 0)
                 {
@@ -194,23 +231,23 @@ namespace ToDoList.Controllers
                             {
                                 new
                                 {
-                                text = $"Responda sempre dentro do contexto do ToDo",
+                                    text = $"Responda sempre dentro do contexto do ToDo",
                                 },
                                 new
                                 {
-                                text = $"isCompleted = true se a tarefa foi concluída, isCompleted = false se a tarefa não foi concluída"
+                                    text = $"isCompleted = true se a tarefa foi concluída, isCompleted = false se a tarefa não foi concluída"
                                 },
                                 new
                                 {
-                                text = $"ToDos: {todosText}"
+                                    text = $"ToDos: {todosText}"
                                 },
                                 new
                                 {
-                                text = $"Pergunta: {question}"
+                                    text = $"Pergunta: {question}"
                                 },
                                 new
                                 {
-                                text = $"Data e Hora Atual: {DateTime.Now.ToUniversalTime().AddHours(-3).ToString("dd-MM-yyyy HH:mm:ss")}"
+                                    text = $"Data e Hora Atual: {DateTime.Now.ToUniversalTime().AddHours(-3).ToString("dd-MM-yyyy HH:mm:ss")}"
                                 },
                             }
                         }

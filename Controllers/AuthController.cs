@@ -42,13 +42,19 @@ namespace ToDoList.Controllers
                 return BadRequest(new { Message = "User already exists" });
             }
 
-            return Ok(new { Message = "User created successfully", PictureUrl = newUser.PictureUrl });
+            return Ok(new { Message = "User created successfully" });
         }
 
-        [HttpPatch("{userId}/photo")]
+        [HttpPatch("photo")]
         [Authorize(Policy = "CanEdit")]
-        public async Task<IActionResult> UpdateUserPhoto(string userId, IFormFile newPhoto)
+        public async Task<IActionResult> UpdateUserPhoto(IFormFile newPhoto)
         {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId == null)
+            {
+                return Unauthorized("User not authenticated");
+            }
+
             var user = await _authService.GetUserByIdAsync(userId);
             if (user == null)
             {
@@ -57,14 +63,11 @@ namespace ToDoList.Controllers
 
             var photoUrl = await _s3Service.UploadFileAsync(newPhoto, $"{Guid.NewGuid()}_{newPhoto.FileName}");
 
-            Console.WriteLine(photoUrl);
-
             user.PictureUrl = photoUrl;
             await _authService.UpdateUserAsync(user);
 
-            return Ok(new { message = "Photo updated successfully", PictureUrl = photoUrl });
+            return Ok(new { message = "Photo updated successfully" });
         }
-
 
         [HttpPost("login")]
         [AllowAnonymous]
@@ -84,14 +87,20 @@ namespace ToDoList.Controllers
 
             var token = JwtTokenGenerator.GenerateJwtToken(user);
 
+            var signedUrl = string.IsNullOrEmpty(user.PictureUrl)
+                ? null
+                : _s3Service.GeneratePresignedUrl(user.PictureUrl);
+
             return Ok(new
             {
                 Id = user.Id,
                 Username = user.Username,
                 Role = user.Role,
-                Token = token
+                PictureUrl = signedUrl,
+                Token = $"Bearer {token}"
             });
         }
+
 
         [HttpGet("current-user")]
         [Authorize]
@@ -110,7 +119,16 @@ namespace ToDoList.Controllers
                 return NotFound(new { Message = "User not found" });
             }
 
-            return Ok(new { Username = user.Username, Role = user.Role, PictureUrl = user.PictureUrl });
+            var signedUrl = string.IsNullOrEmpty(user.PictureUrl)
+                ? null
+                : _s3Service.GeneratePresignedUrl(user.PictureUrl);
+
+            return Ok(new
+            {
+                Username = user.Username,
+                Role = user.Role,
+                PictureUrl = signedUrl
+            });
         }
 
         [HttpPost("request-password-reset")]

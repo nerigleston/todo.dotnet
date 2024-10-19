@@ -1,4 +1,5 @@
 using Amazon.S3.Transfer;
+using Amazon.S3.Model;
 using Amazon.S3;
 using DotNetEnv;
 
@@ -36,7 +37,7 @@ namespace ToDoList.Services
                     await transferUtility.UploadAsync(request);
                 }
 
-                return $"https://{_bucketName}.s3.amazonaws.com/{fileName}";
+                return fileName;
             }
             catch (AmazonS3Exception ex)
             {
@@ -46,6 +47,21 @@ namespace ToDoList.Services
             {
                 throw new Exception($"An error occurred when uploading the file: {ex.Message}", ex);
             }
+        }
+
+
+        public string GeneratePresignedUrl(string objectKey)
+        {
+            var request = new GetPreSignedUrlRequest
+            {
+                BucketName = _bucketName,
+                Key = objectKey,
+                Expires = DateTime.UtcNow.AddMinutes(60),
+                Verb = HttpVerb.GET
+            };
+
+            var url = _s3Client.GetPreSignedURL(request);
+            return url;
         }
     }
 }

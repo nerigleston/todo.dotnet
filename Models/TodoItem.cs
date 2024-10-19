@@ -14,5 +14,7 @@ namespace ToDoList.Models
         public bool IsCompleted { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        public string UserId { get; set; } = string.Empty;
     }
 }
